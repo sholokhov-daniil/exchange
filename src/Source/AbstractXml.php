@@ -4,7 +4,6 @@ namespace Sholokhov\Exchange\Source;
 
 use Iterator;
 use EmptyIterator;
-use Sholokhov\Exchange\Helper\SourceHelper;
 
 /**
  * Базовое представление xml источников данных
@@ -63,7 +62,7 @@ abstract class AbstractXml implements Iterator
      */
     final protected function load(): Iterator
     {
-        $resource = SourceHelper::download($this->path);
+        $resource = fopen($this->path, 'r');
 
         if (!$resource) {
             return new EmptyIterator();
