@@ -3,20 +3,51 @@
 namespace Sholokhov\Exchange\Fields;
 
 use Sholokhov\Exchange\ExchangeInterface;
-use Sholokhov\Exchange\Repository\RepositoryInterface;
+use Sholokhov\Exchange\Normalizers\Attributes\Normalizer;
 use Sholokhov\Exchange\Repository\Types\Memory;
 
 /**
  * Описание структуры и логики работы со свойством
  */
+#[Normalizer('')]
 class Field implements FieldInterface
 {
     /**
      * Конфигурация свойства
      *
-     * @var RepositoryInterface
+     * @var Memory
      */
-    private readonly RepositoryInterface $container;
+    private readonly Memory $container;
+
+    public function __construct(array $options = [])
+    {
+        $this->container = new Memory($options);
+    }
+
+    /**
+     * Создание свойства на основе массива
+     *
+     * @param array $data
+     * @return FieldInterface
+     */
+    public static function fromArray(array $data): FieldInterface
+    {
+        $field = new static;
+//        $field->container
+
+        return new static($data);
+    }
+
+    /**
+     * Возвращает настройки свойства в виде массива
+     *
+     * @return array
+     */
+    public function toArray(): array
+    {
+        // TODO: Добавить преобразование
+        return $this->getContainer()->toArray();
+    }
 
     /**
      * Является идентификационным полем
@@ -199,13 +230,13 @@ class Field implements FieldInterface
     }
 
     /**
-     * Получение хранилище данных
+     * Получение данных о писывающих свойство
      *
      * @final
-     * @return RepositoryInterface
+     * @return Memory
      */
-    final protected function getContainer(): RepositoryInterface
+    final protected function getContainer(): Memory
     {
-        return $this->container ??= new Memory();
+        return $this->container;
     }
 }

@@ -10,6 +10,21 @@ use Sholokhov\Exchange\ExchangeInterface;
 interface FieldInterface
 {
     /**
+     * Создание свойства на основе массива данных
+     *
+     * @param array $data
+     * @return FieldInterface
+     */
+    public static function fromArray(array $data): FieldInterface;
+
+    /**
+     * Преобразование настроек свойства в массив
+     *
+     * @return array
+     */
+    public function toArray(): array;
+
+    /**
      * Поле отвечает за идентификацию значений.
      * На основе данного поля происходит определение наличия импортированного значения
      * или обновление существующего.

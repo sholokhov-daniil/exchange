@@ -22,4 +22,29 @@ class Entity
 
         return $attr->newInstance();
     }
+
+    /**
+     * Получение атрибутов текущего класса с учетом родительских
+     *
+     * Если у текущего класса отсутствует атрибут, то будет происходить поиск у родительских классов
+     *
+     * @param string|object $entity
+     * @param string $attribute
+     * @return object|null
+     * @throws ReflectionException
+     */
+    public static function getAttributeTree(string|object $entity, string $attribute): ?object
+    {
+        if ($attribute = self::getAttribute($entity, $attribute)) {
+            return $attribute;
+        }
+
+        foreach (class_parents($entity) as $parent) {
+            if ($attribute = self::getAttribute($entity, $attribute)) {
+                return $attribute;
+            }
+        }
+
+        return null;
+    }
 }
