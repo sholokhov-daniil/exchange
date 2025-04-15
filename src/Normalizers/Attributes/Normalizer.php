@@ -8,7 +8,7 @@ use Attribute;
 class Normalizer
 {
     public function __construct(
-        public readonly string $normalizer,
+        public readonly string $entity,
         public readonly array $options = [],
     )
     {

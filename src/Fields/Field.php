@@ -2,14 +2,19 @@
 
 namespace Sholokhov\Exchange\Fields;
 
+use ReflectionException;
 use Sholokhov\Exchange\ExchangeInterface;
-use Sholokhov\Exchange\Normalizers\Attributes\Normalizer;
+use Sholokhov\Exchange\Normalizers\Attributes\Normalizer as AttributesNormalizer;
 use Sholokhov\Exchange\Repository\Types\Memory;
+use Sholokhov\Exchange\Serializer\SerializerFactory;
+use Symfony\Component\Serializer\Attribute\DiscriminatorMap;
 
 /**
  * Описание структуры и логики работы со свойством
  */
-#[Normalizer('')]
+#[AttributesNormalizer(Normalizer\Base::class)]
+
+#[DiscriminatorMap()]
 class Field implements FieldInterface
 {
     /**
@@ -29,13 +34,15 @@ class Field implements FieldInterface
      *
      * @param array $data
      * @return FieldInterface
+     * @throws ReflectionException
      */
     public static function fromArray(array $data): FieldInterface
     {
-        $field = new static;
-//        $field->container
+        $factory = new SerializerFactory;
+        $serializer = $factory->makeByEntity(static::class);
+        $options = $serializer->serialize($data, 'array');
 
-        return new static($data);
+        return new static($options);
     }
 
     /**
