@@ -7,6 +7,24 @@ use Sholokhov\Exchange\Fields\FieldInterface;
 class FieldHelper
 {
     /**
+     * Приведение формата значения согласно его описанию
+     *
+     * @param mixed $value
+     * @param FieldInterface $field
+     * @return mixed
+     */
+    public static function normalizeValue(mixed $value, FieldInterface $field): mixed
+    {
+        if ($field->isMultiple() && !is_array($value)) {
+            return $value === null ? [] : [$value];
+        } elseif (!$field->isMultiple() && is_array($value)) {
+            return reset($value);
+        }
+
+        return $value;
+    }
+
+    /**
      * Получение значения свойства
      *
      * @param array $item

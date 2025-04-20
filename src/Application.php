@@ -5,6 +5,7 @@ namespace Sholokhov\Exchange;
 use Exception;
 use ReflectionException;
 
+use Sholokhov\Exchange\Bootstrap\Loader;
 use Sholokhov\Exchange\Helper\Entity;
 use Sholokhov\Exchange\Repository\RepositoryInterface;
 use Sholokhov\Exchange\Target\Attributes\CacheContainer;
@@ -37,16 +38,8 @@ abstract class Application implements ExchangeInterface
     {
         $this->options = $this->makeOptionRepository($options);
         $this->cache = $this->makeCacheRepository();
-        $this->configure();
-    }
 
-    /**
-     * Конфигурация текущего обмена
-     *
-     * @return void
-     */
-    protected function configure(): void
-    {
+        $this->bootstrap();
     }
 
     /**
@@ -68,6 +61,17 @@ abstract class Application implements ExchangeInterface
     protected function getOptions(): RepositoryInterface
     {
         return $this->options;
+    }
+
+    /**
+     * Вызов методов и функций отвечающих за загрузку конфигураций
+     *
+     * @return void
+     */
+    private function bootstrap(): void
+    {
+        $loader = new Loader($this);
+        $loader->bootstrap();
     }
 
     /**
