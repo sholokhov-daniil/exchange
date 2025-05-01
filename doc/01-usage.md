@@ -213,7 +213,7 @@ $map = [
     (new Fields\Field)
         ->setPath('id')
         ->setCode('XML_ID')
-        ->setKeyField(),
+        ->setPrimary(),
     (new Fields\Field)
         ->setPath('name')
         ->setCode('CODE'),
@@ -233,7 +233,7 @@ $map = [
                         (new Fields\Field)
                             ->setPath('color.exterior.id')
                             ->setCode('XML_ID')
-                            ->setKeyField(),
+                            ->setPrimary(),
                         (new Fields\Field)
                             ->setPath('color.exterior.name')
                             ->setCode('NAME')
@@ -326,7 +326,7 @@ class Queue extends Exchange
     protected function exists(array $item): bool
     {
         // Получение свойство, которое отвечает за связь элементов сущности и элементов источника
-        $keyField = $this->getKeyField();
+        $keyField = $this->getPrimaryField();
         $keyValue = $item[$keyField->getCode()];
         
         if ($this->cache->has($keyValue)) {
@@ -359,7 +359,7 @@ class Queue extends Exchange
     // Обновление элемента очереди
     protected function update(array $item): Result
     {
-        $keyField = $this->getKeyField();
+        $keyField = $this->getPrimaryField();
         $keyValue = $item[$keyField->getCode()];
         $id = $this->cache->get($keyValue);
        

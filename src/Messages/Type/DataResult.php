@@ -102,6 +102,16 @@ class DataResult implements ResultInterface
     }
 
     /**
+     * Получение ошибочных сообщений
+     *
+     * @return array
+     */
+    public function getErrorMessages(): array
+    {
+        return array_map(fn(Error $error) => $error->getMessage(), $this->errors);
+    }
+
+    /**
      * Получить ошибку по коду
      *
      * @param string $code

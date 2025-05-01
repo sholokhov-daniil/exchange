@@ -34,9 +34,9 @@ class Entity
             return $fountAttribute;
         }
 
-        while ($reflection->getParentClass()) {
-            if ($attribute = self::getAttributeByReflection($reflection->getParentClass(), $attribute)) {
-                return $attribute;
+        while ($reflection = $reflection->getParentClass()) {
+            if ($fountAttribute = self::getAttributeByReflection($reflection, $attribute)) {
+                return $fountAttribute;
             }
         }
 

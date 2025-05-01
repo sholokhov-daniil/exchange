@@ -2,7 +2,11 @@
 
 namespace Sholokhov\Exchange;
 
+use Bitrix\Main\Diag\Debug;
+use Sholokhov\Exchange\Bootstrap\Validator;
+use Sholokhov\Exchange\Prepares\Chain;
 use Sholokhov\Exchange\Prepares\PrepareInterface;
+use Sholokhov\Exchange\Target\Attributes\Validate;
 use Throwable;
 use Exception;
 use ArrayIterator;
@@ -20,7 +24,6 @@ use Sholokhov\Exchange\Helper\LoggerHelper;
 use Sholokhov\Exchange\Messages\ResultInterface;
 use Sholokhov\Exchange\Messages\Type\Error;
 use Sholokhov\Exchange\Messages\Type\DataResult;
-use Sholokhov\Exchange\Target\Attributes\Target;
 use Sholokhov\Exchange\Target\Attributes\MapValidator;
 use Sholokhov\Exchange\Target\Attributes\BootstrapConfiguration;
 
@@ -188,29 +191,30 @@ abstract class Exchange extends Application
      */
     public function addPrepared(PrepareInterface $prepare): self
     {
-        $prepares = $this->repository->get('prepares', []);
-        array_unshift($prepares, $prepare);
-        $this->repository->set('prepares', $prepares);
-
+        $this->getPrepares()->add($prepare);
         return $this;
+    }
+
+    /**
+     * Получение цепочки преобразователей данных
+     *
+     * @final
+     * @return Chain
+     */
+    final protected function getPrepares(): Chain
+    {
+        return $this->repository->get('prepares');
     }
 
     /**
      * Проверка возможности запуска обмена данных
      *
      * @return ResultInterface
-     * @throws ReflectionException
      */
     protected function validate(): ResultInterface
     {
-        $result = new DataResult;
-
-        $mapValidate = $this->mapValidate($this->getMap());
-        if (!$mapValidate->isSuccess()) {
-            $result->addErrors($mapValidate->getErrors());
-        }
-
-        return $result;
+        $bootstrap = new Validator($this);
+        return $bootstrap->run();
     }
 
     /**
@@ -220,10 +224,10 @@ abstract class Exchange extends Application
      * @return FieldInterface
      * @throws Exception
      */
-    final protected function getKeyField(): FieldInterface
+    final protected function getPrimaryField(): FieldInterface
     {
         foreach ($this->getMap() as $field) {
-            if ($field->isKeyField()) {
+            if ($field->isPrimary()) {
                 return $field;
             }
         }
@@ -291,6 +295,7 @@ abstract class Exchange extends Application
     {
         $result = new DataResult;
         $map = $this->getMap();
+        $data = [];
 
         foreach ($map as $field) {
             $value = FieldHelper::getValue($item, $field);
@@ -301,18 +306,14 @@ abstract class Exchange extends Application
                 if (!$targetResult->isSuccess()) {
                     $result->addErrors($targetResult->getErrors());
                 }
-            } else {
-                /** @var PrepareInterface[] $prepares */
-                $prepares = $this->repository->get('prepares', []);
-                foreach ($prepares as $prepare) {
-                    if ($prepare->supported($value, $field)) {
-                        $value = $prepare->prepare($value, $field);
-                        $result->setData($value);
-                        break;
-                    }
-                }
+            } elseif ($value) {
+                $value = $this->getPrepares()->prepare($value, $field);
             }
+
+            $data[$field->getCode()] = $value;
         }
+
+        $result->setData($data);
 
         return $result;
     }
@@ -363,14 +364,14 @@ abstract class Exchange extends Application
     /**
      * Валидация карты обмена
      *
-     * @param array $map
      * @return ResultInterface
-     * @throws ReflectionException
-     * @throws Exception
      */
-    private function mapValidate(array $map): ResultInterface
+    #[Validate]
+    private function mapValidate(): ResultInterface
     {
-        return $this->repository->get('map_validator')->validate($map);
+        return $this->repository
+            ->get('map_validator')
+            ->validate($this->getMap());
     }
 
     /**
@@ -382,6 +383,7 @@ abstract class Exchange extends Application
     private function bootstrapRepository(): void
     {
         $this->repository = new Memory;
+        $this->repository->set('prepares', new Chain);
     }
 
     /**

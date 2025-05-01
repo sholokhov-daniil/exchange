@@ -16,7 +16,7 @@ interface FieldInterface
      *
      * @return bool
      */
-    public function isKeyField(): bool;
+    public function isPrimary(): bool;
 
     /**
      * Получение пути хранения значения

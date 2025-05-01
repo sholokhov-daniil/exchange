@@ -23,7 +23,7 @@ class Field implements FieldInterface
      *
      * @return bool
      */
-    public function isKeyField(): bool
+    public function isPrimary(): bool
     {
         return $this->getContainer()->get('key_field', false);
     }
@@ -34,7 +34,7 @@ class Field implements FieldInterface
      * @param bool $value
      * @return $this
      */
-    public function setKeyField(bool $value = true): self
+    public function setPrimary(bool $value = true): self
     {
         $this->getContainer()->set('key_field', $value);
         return $this;

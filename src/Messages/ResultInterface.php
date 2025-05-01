@@ -60,6 +60,13 @@ interface ResultInterface
     public function getErrors(): array;
 
     /**
+     * Получение ошибочных сообщений
+     *
+     * @return string[]
+     */
+    public function getErrorMessages(): array;
+
+    /**
      * Получение ошибки по коду
      *
      * @param string $code
