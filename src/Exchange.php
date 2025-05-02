@@ -2,7 +2,6 @@
 
 namespace Sholokhov\Exchange;
 
-use Bitrix\Main\Diag\Debug;
 use Sholokhov\Exchange\Bootstrap\Validator;
 use Sholokhov\Exchange\Prepares\Chain;
 use Sholokhov\Exchange\Prepares\PrepareInterface;

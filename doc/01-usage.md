@@ -296,10 +296,14 @@ $result = $exchange->execute($source);
 
 ````php
 use Sholokhov\Exchange\Exchange;
-use Sholokhov\Exchange\Messages\Result;
+use Sholokhov\Exchange\Messages\ResultInterface;
+use Sholokhov\Exchange\Messages\Type\Error;
+use Sholokhov\Exchange\Messages\Type\DataResult;
+use Sholokhov\Exchange\Target\Attributes\Validate;
 use Sholokhov\Exchange\Target\Attributes\MapValidator;
-use Sholokhov\Exchange\Target\Attributes\OptionsContainer;
 use Sholokhov\Exchange\Target\Attributes\CacheContainer;
+use Sholokhov\Exchange\Target\Attributes\OptionsContainer;
+use Sholokhov\Exchange\Target\Attributes\BootstrapConfiguration;
 
 #[MapValidator('custom map validation')]
 #[OptionsContainer('custom options registry')]
@@ -316,8 +320,20 @@ class Queue extends Exchange
         return $options;
     }
 
+    // Производит валидацию перед запуском обмена
+    #[Validate]
+    private function validateOptions(): ResultInterface
+    {
+        $result = new DataResult;
+        
+        if (!$this->getOptions()->get('TEST_KEY')) {
+            $result->addError(new Error('TEST_KEY not found'))
+        }
+    }
+
     // Конфигурация обмена после инициализации конструктора
-    protected function configure(): void
+    #[BootstrapConfiguration]
+    private function configure(): void
     {
         $this->event->subscribeAfterRun([$this, 'checkCount']);
     }
@@ -351,13 +367,13 @@ class Queue extends Exchange
     }
     
     // Добавление в очередь
-    protected function add(array $item): Result
+    protected function add(array $item): ResultInterface
     {
         // ...
     }
     
     // Обновление элемента очереди
-    protected function update(array $item): Result
+    protected function update(array $item): ResultInterface
     {
         $keyField = $this->getPrimaryField();
         $keyValue = $item[$keyField->getCode()];
