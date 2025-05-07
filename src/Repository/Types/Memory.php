@@ -64,17 +64,6 @@ class Memory implements RepositoryInterface
     }
 
     /**
-     * Проверка наличия свойства.
-     *
-     * @param string $name
-     * @return bool
-     */
-    public function hasField(string $name): bool
-    {
-        return array_key_exists($name, $this->fields);
-    }
-
-    /**
      * Получение текущего значения.
      *
      * @return mixed
@@ -132,6 +121,27 @@ class Memory implements RepositoryInterface
      */
     public function has(string $id): bool
     {
-        return $this->hasField($id);
+        return array_key_exists($id, $this->fields);
+    }
+
+    /**
+     * Удаление значения
+     *
+     * @param string $id
+     * @return void
+     */
+    public function delete(string $id): void
+    {
+        unset($this->fields[$id]);
+    }
+
+    /**
+     * Очистить хранилище
+     *
+     * @return void
+     */
+    public function clear(): void
+    {
+        $this->fields = [];
     }
 }

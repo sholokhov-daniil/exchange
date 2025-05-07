@@ -2,6 +2,7 @@
 
 namespace Sholokhov\Exchange\Helper;
 
+use Bitrix\Main\Diag\Debug;
 use ReflectionClass;
 use ReflectionException;
 
@@ -13,13 +14,45 @@ class Entity
      */
     public static function getAttribute(string|object $entity, string $attribute): ?object
     {
-        $reflection = new ReflectionClass($entity);
-        $attr = $reflection->getAttributes($attribute)[0] ?? [];
+        return self::getAttributeByReflection(new ReflectionClass($entity), $attribute);
+    }
 
-        if (!$attr) {
-            return null;
+    /**
+     * Получение атрибута у текущего объекта или его родителя
+     *
+     * @param string|object $entity
+     * @param string $attribute
+     * @return object|null
+     * @throws ReflectionException
+     */
+    public static function getAttributeChain(string|object $entity, string $attribute): ?object
+    {
+        $reflection = new ReflectionClass($entity);
+        $fountAttribute = self::getAttributeByReflection($reflection, $attribute);
+
+        if ($fountAttribute) {
+            return $fountAttribute;
         }
 
-        return $attr->newInstance();
+        while ($reflection = $reflection->getParentClass()) {
+            if ($fountAttribute = self::getAttributeByReflection($reflection, $attribute)) {
+                return $fountAttribute;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Получение атрибута из описания класса
+     *
+     * @param ReflectionClass $reflection
+     * @param string $attribute
+     * @return object|null
+     */
+    protected static function getAttributeByReflection(ReflectionClass $reflection, string $attribute): ?object
+    {
+        $attribute = $reflection->getAttributes($attribute)[0] ?? null;
+        return $attribute?->newInstance();
     }
 }

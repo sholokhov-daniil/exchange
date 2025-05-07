@@ -213,7 +213,7 @@ $map = [
     (new Fields\Field)
         ->setPath('id')
         ->setCode('XML_ID')
-        ->setKeyField(),
+        ->setPrimary(),
     (new Fields\Field)
         ->setPath('name')
         ->setCode('CODE'),
@@ -233,7 +233,7 @@ $map = [
                         (new Fields\Field)
                             ->setPath('color.exterior.id')
                             ->setCode('XML_ID')
-                            ->setKeyField(),
+                            ->setPrimary(),
                         (new Fields\Field)
                             ->setPath('color.exterior.name')
                             ->setCode('NAME')
@@ -291,15 +291,22 @@ $result = $exchange->execute($source);
 Поддерживает атрибуты наследников класса:
 * [MapValidator](https://github.com/sholokhov-daniil/exchange/blob/master/src/Target/Attributes/MapValidator.php) - Валидатор карты обмена
 
+Поддерживает атрибуты методов:
+* [Validate](https://github.com/sholokhov-daniil/exchange/blob/master/src/Target/Attributes/Validate.php) - Валидация настроек перед стартом обмена. Данный атрибут может указываться у нескольких методов одновременно. Методы вызываются согласно порядку размещения в коде
+* [BootstrapConfiguration](https://github.com/sholokhov-daniil/exchange/blob/master/src/Target/Attributes/BootstrapConfiguration.php) - Системная автозагрузка(конфигурация) обмена. Данный атрибут может указываться у нескольких методов одновременно. Методы вызываются согласно порядку размещения в коде
 
 ## Пример создания класса импорта
 
 ````php
 use Sholokhov\Exchange\Exchange;
-use Sholokhov\Exchange\Messages\Result;
+use Sholokhov\Exchange\Messages\ResultInterface;
+use Sholokhov\Exchange\Messages\Type\Error;
+use Sholokhov\Exchange\Messages\Type\DataResult;
+use Sholokhov\Exchange\Target\Attributes\Validate;
 use Sholokhov\Exchange\Target\Attributes\MapValidator;
-use Sholokhov\Exchange\Target\Attributes\OptionsContainer;
 use Sholokhov\Exchange\Target\Attributes\CacheContainer;
+use Sholokhov\Exchange\Target\Attributes\OptionsContainer;
+use Sholokhov\Exchange\Target\Attributes\BootstrapConfiguration;
 
 #[MapValidator('custom map validation')]
 #[OptionsContainer('custom options registry')]
@@ -316,8 +323,26 @@ class Queue extends Exchange
         return $options;
     }
 
+    // Производит валидацию перед запуском обмена
+    #[Validate]
+    private function validateOptions(): ResultInterface
+    {
+        $result = new DataResult;
+        
+        if (!$this->getOptions()->get('TEST_KEY')) {
+            $result->addError(new Error('TEST_KEY not found'))
+        }
+    }
+    
+    #[Validate]
+    private function validateAny(): ResultInterface
+    {
+        // ...
+    }
+
     // Конфигурация обмена после инициализации конструктора
-    protected function configure(): void
+    #[BootstrapConfiguration]
+    private function configure(): void
     {
         $this->event->subscribeAfterRun([$this, 'checkCount']);
     }
@@ -326,7 +351,7 @@ class Queue extends Exchange
     protected function exists(array $item): bool
     {
         // Получение свойство, которое отвечает за связь элементов сущности и элементов источника
-        $keyField = $this->getKeyField();
+        $keyField = $this->getPrimaryField();
         $keyValue = $item[$keyField->getCode()];
         
         if ($this->cache->has($keyValue)) {
@@ -351,15 +376,15 @@ class Queue extends Exchange
     }
     
     // Добавление в очередь
-    protected function add(array $item): Result
+    protected function add(array $item): ResultInterface
     {
         // ...
     }
     
     // Обновление элемента очереди
-    protected function update(array $item): Result
+    protected function update(array $item): ResultInterface
     {
-        $keyField = $this->getKeyField();
+        $keyField = $this->getPrimaryField();
         $keyValue = $item[$keyField->getCode()];
         $id = $this->cache->get($keyValue);
        

@@ -35,7 +35,7 @@ class MapValidator implements ValidatorInterface
                 break;
             }
 
-            if ($field->isKeyField()) {
+            if ($field->isPrimary()) {
                 if ($primary) {
                     $result->addError(new Error(sprintf('Duplication of the identification field "%s"', $field->getCode())));
                 } else {
@@ -43,7 +43,7 @@ class MapValidator implements ValidatorInterface
                 }
             }
 
-            if (!$field->getPath()) {
+            if ($field->getPath() === '') {
                 $result->addError(new Error('Field path is required'));
             }
         }

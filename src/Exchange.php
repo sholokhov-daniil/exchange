@@ -2,6 +2,10 @@
 
 namespace Sholokhov\Exchange;
 
+use Sholokhov\Exchange\Bootstrap\Validator;
+use Sholokhov\Exchange\Prepares\Chain;
+use Sholokhov\Exchange\Prepares\PrepareInterface;
+use Sholokhov\Exchange\Target\Attributes\Validate;
 use Throwable;
 use Exception;
 use ArrayIterator;
@@ -10,14 +14,17 @@ use ReflectionException;
 use Sholokhov\Exchange\Events\Event;
 use Sholokhov\Exchange\Events\EventResult;
 use Sholokhov\Exchange\Fields\FieldInterface;
-use Sholokhov\Exchange\Helper\LoggerHelper;
+use Sholokhov\Exchange\Repository\Types\Memory;
+use Sholokhov\Exchange\Repository\RepositoryInterface;
 use Sholokhov\Exchange\Validators\ValidatorInterface;
 use Sholokhov\Exchange\Helper\Entity;
 use Sholokhov\Exchange\Helper\FieldHelper;
+use Sholokhov\Exchange\Helper\LoggerHelper;
 use Sholokhov\Exchange\Messages\ResultInterface;
 use Sholokhov\Exchange\Messages\Type\Error;
 use Sholokhov\Exchange\Messages\Type\DataResult;
 use Sholokhov\Exchange\Target\Attributes\MapValidator;
+use Sholokhov\Exchange\Target\Attributes\BootstrapConfiguration;
 
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerAwareInterface;
@@ -49,6 +56,13 @@ abstract class Exchange extends Application
      * @var int
      */
     protected int $dateUp = 0;
+
+    /**
+     * Хранилище данных текущего обмена
+     *
+     * @var RepositoryInterface
+     */
+    protected readonly RepositoryInterface $repository;
 
     /**
      * Добавление нового элемента сущности
@@ -169,33 +183,50 @@ abstract class Exchange extends Application
     }
 
     /**
+     * Добавить преобразователь данных обмена
+     *
+     * @param PrepareInterface $prepare
+     * @return $this
+     */
+    public function addPrepared(PrepareInterface $prepare): self
+    {
+        $this->getPrepares()->add($prepare);
+        return $this;
+    }
+
+    /**
+     * Получение цепочки преобразователей данных
+     *
+     * @final
+     * @return Chain
+     */
+    final protected function getPrepares(): Chain
+    {
+        return $this->repository->get('prepares');
+    }
+
+    /**
      * Проверка возможности запуска обмена данных
      *
      * @return ResultInterface
-     * @throws ReflectionException
      */
     protected function validate(): ResultInterface
     {
-        $result = new DataResult;
-
-        $mapValidate = $this->mapValidate($this->getMap());
-        if (!$mapValidate->isSuccess()) {
-            $result->addErrors($mapValidate->getErrors());
-        }
-
-        return $result;
+        $bootstrap = new Validator($this);
+        return $bootstrap->run();
     }
 
     /**
      * Получение свойства отвечающего за идентификацию значения
      *
+     * @final
      * @return FieldInterface
      * @throws Exception
      */
-    final protected function getKeyField(): FieldInterface
+    final protected function getPrimaryField(): FieldInterface
     {
         foreach ($this->getMap() as $field) {
-            if ($field->isKeyField()) {
+            if ($field->isPrimary()) {
                 return $field;
             }
         }
@@ -213,13 +244,13 @@ abstract class Exchange extends Application
     {
         (new Event(self::BEFORE_IMPORT_ITEM, ['exchange' => $this, 'item' => &$item]))->send();
 
-        $normalizeResult = $this->normalize($item);
+        $prepareResult = $this->prepared($item);
 
-        if (!$normalizeResult->isSuccess()) {
-            return $normalizeResult;
+        if (!$prepareResult->isSuccess()) {
+            return $prepareResult;
         }
 
-        $item = $normalizeResult->getData();
+        $item = $prepareResult->getData();
 
         if ($this->exists($item)) {
             $event = new Event(self::BEFORE_UPDATE, ['exchange' => $this, 'item' => &$item]);
@@ -233,7 +264,7 @@ abstract class Exchange extends Application
             }
 
             $result = $this->update($item);
-            (new Event(self::AFTER_UPDATE, ['exchange' => $this, 'item' => $item, 'result' => $result]));
+            (new Event(self::AFTER_UPDATE, ['exchange' => $this, 'item' => $item, 'result' => $result]))->send();
         } else {
             $event = new Event(self::BEFORE_ADD, ['exchange' => $this, 'item' => &$item]);
 
@@ -254,80 +285,123 @@ abstract class Exchange extends Application
     }
 
     /**
-     * Нормализация импортируемых данных, для восприятия системы
+     * Преобразование значения
      *
      * @param array $item
      * @return ResultInterface
      */
-    private function normalize(array $item): ResultInterface
+    private function prepared(array $item): ResultInterface
     {
         $result = new DataResult;
-        $fields = [];
-
         $map = $this->getMap();
+        $data = [];
 
         foreach ($map as $field) {
             $value = FieldHelper::getValue($item, $field);
+            $value = $this->normalize($value, $field);
 
-            if ($field->isMultiple() && !is_array($value)) {
-                $value = $value === null ? [] : [$value];
-            }
-
-            foreach ($field->getNormalizers() as $validator) {
-                $value = call_user_func_array($validator, [$value, $field]);
-            }
-
-            $fields[$field->getCode()] = $value;
-        }
-
-        foreach ($map as $field) {
-            if ($target = $field->getTarget()) {
-                if ($this->logger && $target instanceof LoggerAwareInterface) {
-                    $target->setLogger($this->logger);
-                }
-
-                if ($this->logger && $target instanceof LoggerAwareInterface) {
-                    $target->setLogger($this->logger);
-                }
-
-                $source = new ArrayIterator([$item]);
-                $targetResult = $target->execute($source);
-
+            if ($field->getTarget()) {
+                $targetResult = $this->runTarget($value, $field);
                 if (!$targetResult->isSuccess()) {
                     $result->addErrors($targetResult->getErrors());
                 }
-
-                $targetDataResult = $targetResult->getData();
-
-                if ($field->isMultiple() && !is_array($targetDataResult)) {
-                    $fields[$field->getCode()] = $targetDataResult === null ? [] : [$targetDataResult];
-                } elseif (!$field->isMultiple() && is_array($targetDataResult)) {
-                    $fields[$field->getCode()] = reset($targetDataResult);
-                }
+            } elseif ($value) {
+                $value = $this->getPrepares()->prepare($value, $field);
             }
+
+            $data[$field->getCode()] = $value;
         }
 
-        return $result->setData($fields);
+        $result->setData($data);
+
+        return $result;
+    }
+
+    /**
+     * Вызов вложенного импорта указанного в свойстве
+     *
+     * @param mixed $value
+     * @param FieldInterface $field
+     * @return ResultInterface
+     */
+    private function runTarget(mixed $value, FieldInterface $field): ResultInterface
+    {
+        $target = $field->getTarget();
+
+        if ($this->logger && $target instanceof LoggerAwareInterface) {
+            $target->setLogger($this->logger);
+        }
+
+        if ($this->logger && $target instanceof LoggerAwareInterface) {
+            $target->setLogger($this->logger);
+        }
+
+        $source = new ArrayIterator([$value]);
+        $result = $target->execute($source);
+
+        return FieldHelper::normalizeValue($result, $field);
+    }
+
+    /**
+     * Нормализация импортированного значения
+     *
+     * @param mixed $value
+     * @param FieldInterface $field
+     * @return mixed
+     */
+    private function normalize(mixed $value, FieldInterface $field): mixed
+    {
+        $value = FieldHelper::normalizeValue($value, $field);
+
+        foreach ($field->getNormalizers() as $validator) {
+            $value = call_user_func_array($validator, [$value, $field]);
+        }
+
+        return $value;
     }
 
     /**
      * Валидация карты обмена
      *
-     * @param array $map
      * @return ResultInterface
-     * @throws ReflectionException
-     * @throws Exception
      */
-    private function mapValidate(array $map): ResultInterface
+    #[Validate]
+    private function mapValidate(): ResultInterface
+    {
+        return $this->repository
+            ->get('map_validator')
+            ->validate($this->getMap());
+    }
+
+    /**
+     * Инициализация хранилища дополнительных данных обмена
+     *
+     * @return void
+     */
+    #[BootstrapConfiguration]
+    private function bootstrapRepository(): void
+    {
+        $this->repository = new Memory;
+        $this->repository->set('prepares', new Chain);
+    }
+
+    /**
+     * Инициализация механизма валидации карты обмена
+     *
+     * @return void
+     * @throws ReflectionException
+     */
+    #[BootstrapConfiguration]
+    private function bootstrapMap(): void
     {
         /** @var MapValidator $attribute */
-        $attribute = Entity::getAttribute($this, MapValidator::class) ?: Entity::getAttribute(self::class, MapValidator::class);
+        $attribute = Entity::getAttributeChain($this, MapValidator::class);
         $validator = $attribute->getEntity();
 
         if (!is_subclass_of($validator, ValidatorInterface::class)) {
             throw new Exception('Validator class must be subclass of ' . ValidatorInterface::class);
         }
 
-        return (new $validator)->validate($map);
+        $this->repository->set('map_validator', new $validator);
     }
 }

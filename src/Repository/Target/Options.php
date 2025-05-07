@@ -3,10 +3,9 @@
 namespace Sholokhov\Exchange\Repository\Target;
 
 use Sholokhov\Exchange\Repository\Types\Memory;
-use Sholokhov\Exchange\OptionsInterface;
 use Sholokhov\Exchange\Fields\FieldInterface;
 
-class Options extends Memory implements Options
+class Options extends Memory
 {
     /**
      * Карта обмена

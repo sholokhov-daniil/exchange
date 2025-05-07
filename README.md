@@ -36,7 +36,7 @@ $map = [
     (new Fields\Field)
         ->setPath('id')
         ->setCode('XML_ID')
-        ->setKeyField(),
+        ->setPrimary(),
     (new Fields\Field)
         ->setPath('name')
         ->setCode('NAME'),

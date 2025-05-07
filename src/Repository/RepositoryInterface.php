@@ -40,10 +40,17 @@ interface RepositoryInterface extends Iterator, Countable, PsrContainer
     public function set(string $id, mixed $value): void;
 
     /**
-     * Проверка наличия свойства.
+     * Удаление значения
      *
-     * @param string $name
-     * @return bool
+     * @param string $id
+     * @return void
      */
-    public function hasField(string $name): bool;
+    public function delete(string $id): void;
+
+    /**
+     * Очистить хранилище
+     *
+     * @return void
+     */
+    public function clear(): void;
 }
