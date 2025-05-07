@@ -291,6 +291,9 @@ $result = $exchange->execute($source);
 Поддерживает атрибуты наследников класса:
 * [MapValidator](https://github.com/sholokhov-daniil/exchange/blob/master/src/Target/Attributes/MapValidator.php) - Валидатор карты обмена
 
+Поддерживает атрибуты методов:
+* [Validate](https://github.com/sholokhov-daniil/exchange/blob/master/src/Target/Attributes/Validate.php) - Валидация настроек перед стартом обмена. Данный атрибут может указываться у нескольких методов одновременно. Методы вызываются согласно порядку размещения в коде
+* [BootstrapConfiguration](https://github.com/sholokhov-daniil/exchange/blob/master/src/Target/Attributes/BootstrapConfiguration.php) - Системная автозагрузка(конфигурация) обмена. Данный атрибут может указываться у нескольких методов одновременно. Методы вызываются согласно порядку размещения в коде
 
 ## Пример создания класса импорта
 
@@ -329,6 +332,12 @@ class Queue extends Exchange
         if (!$this->getOptions()->get('TEST_KEY')) {
             $result->addError(new Error('TEST_KEY not found'))
         }
+    }
+    
+    #[Validate]
+    private function validateAny(): ResultInterface
+    {
+        // ...
     }
 
     // Конфигурация обмена после инициализации конструктора
