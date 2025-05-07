@@ -346,6 +346,15 @@ class Queue extends Exchange
     {
         $this->event->subscribeAfterRun([$this, 'checkCount']);
     }
+    
+    // Добавление системных преобразователей импортированных данных
+    #[BootstrapConfiguration]
+    private function registrationPrepares(): void
+    {
+        $this->addPrepared(
+            // ...
+        );    
+    }
 
     // Проверка существования элемента в очереди
     protected function exists(array $item): bool
