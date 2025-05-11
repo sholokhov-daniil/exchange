@@ -2,11 +2,6 @@
 
 namespace Sholokhov\Exchange;
 
-use Bitrix\Main\Diag\Debug;
-use Sholokhov\Exchange\Bootstrap\Validator;
-use Sholokhov\Exchange\Prepares\Chain;
-use Sholokhov\Exchange\Prepares\PrepareInterface;
-use Sholokhov\Exchange\Target\Attributes\Validate;
 use Throwable;
 use Exception;
 use ArrayIterator;
@@ -14,6 +9,7 @@ use ReflectionException;
 
 use Sholokhov\Exchange\Events\Event;
 use Sholokhov\Exchange\Events\EventResult;
+use Sholokhov\Exchange\Bootstrap\Validator;
 use Sholokhov\Exchange\Fields\FieldInterface;
 use Sholokhov\Exchange\Repository\Types\Memory;
 use Sholokhov\Exchange\Repository\RepositoryInterface;
@@ -24,6 +20,9 @@ use Sholokhov\Exchange\Helper\LoggerHelper;
 use Sholokhov\Exchange\Messages\ResultInterface;
 use Sholokhov\Exchange\Messages\Type\Error;
 use Sholokhov\Exchange\Messages\Type\DataResult;
+use Sholokhov\Exchange\Prepares\Chain;
+use Sholokhov\Exchange\Prepares\PrepareInterface;
+use Sholokhov\Exchange\Target\Attributes\Validate;
 use Sholokhov\Exchange\Target\Attributes\MapValidator;
 use Sholokhov\Exchange\Target\Attributes\BootstrapConfiguration;
 
