@@ -2,6 +2,7 @@
 
 namespace Sholokhov\Exchange;
 
+use Bitrix\Main\Diag\Debug;
 use Sholokhov\Exchange\Bootstrap\Validator;
 use Sholokhov\Exchange\Prepares\Chain;
 use Sholokhov\Exchange\Prepares\PrepareInterface;
@@ -305,7 +306,7 @@ abstract class Exchange extends Application
                 if (!$targetResult->isSuccess()) {
                     $result->addErrors($targetResult->getErrors());
                 }
-            } elseif ($value) {
+            } else {
                 $value = $this->getPrepares()->prepare($value, $field);
             }
 
